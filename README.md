@@ -1,4 +1,4 @@
-# QM solvent-shell selection from MD
+# QM/MM solvent-shell selection
 
 This repository now preserves and ports the snapshot-based workflow in `source/qm_prep_mult_frame_exp_solv.tcl`. The reimplementation is intended to keep the original **selection algorithm unchanged**, not replace it with a generic nearest-water or Cu-centered cutoff rule.
 
@@ -6,33 +6,49 @@ This repository now preserves and ports the snapshot-based workflow in `source/q
 
 For each snapshot, the source script counts unique water residue IDs within 10 Å of the `CU1P DTT DTBD` solute. Its target is 50 waters. If the count is not 50, it retains waters within 3.5 Å of atoms named `S1 S2 S3 S4 N2 O1 O2 CU1P`, then fills the remainder from the other waters in the 10 Å shell, ranked by distance from the geometric center of all solute atoms to the water `OH2` atom. The source's resid-only behavior is preserved for fidelity. Full details and caveats are in `docs/SOURCE_AUDIT.md`.
 
-## Run the Tcl-algorithm port on one snapshot
+## Run on one or multiple PDB snapshots
 
-Install in editable mode:
+Install the package and tests:
 
 ```bash
 python -m pip install -e ".[dev]"
 pytest
 ```
 
-Then run:
+One PDB:
 
 ```bash
-select-solvent-shell tcl-workflow snapshot.pdb \
-  --target-waters 50 \
-  --output-pdb qm_system_snapshot.pdb \
-  --report-json selection_report.json
+select-solvent-shell tcl-workflow --pdb snapshot.pdb --output-dir qm_frames
 ```
 
-Or without installation:
+Multiple PDBs or a wildcard (quote the wildcard so Python expands it):
 
 ```bash
-PYTHONPATH=src python -m solvent_shell.cli tcl-workflow snapshot.pdb \
-  --target-waters 50 --output-pdb qm_system_snapshot.pdb \
-  --report-json selection_report.json
+select-solvent-shell tcl-workflow --pdb "snapshots/*.pdb" --output-dir qm_frames
 ```
 
-This command processes a **single PDB snapshot**. Run it separately for each input snapshot; it does not automatically iterate over a trajectory or launch NAMD/ORCA.
+Each input snapshot produces a separate `<input-stem>_qm_frame.pdb`. A `selection_reports.json` file records the selected residue IDs and counts for every input.
+
+## Run on DCD or XTC trajectories
+
+Install optional trajectory support:
+
+```bash
+python -m pip install -e ".[trajectory]"
+```
+
+Use a topology that matches the trajectory atom order (PDB, PSF, GRO, etc. supported by MDAnalysis):
+
+```bash
+select-solvent-shell tcl-workflow \
+  --topology system.pdb \
+  --trajectory production.xtc \
+  --output-dir qm_frames
+```
+
+For DCD, replace `production.xtc` with your `.dcd` file. Each trajectory frame is written as its own PDB, named `frame_000000_qm.pdb`, `frame_000001_qm.pdb`, and so on. Frame numbers are zero-based. To process a subset, use `--start 100 --stop 200 --step 2` (stop is exclusive). The report JSON includes the trajectory name and frame index.
+
+The trajectory topology must contain the solute and solvent atoms, with the residue and atom names expected by the original Tcl script. This tool processes coordinates frame-by-frame; it does not alter the underlying trajectory.
 
 ## Generic helper retained
 

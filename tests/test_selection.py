@@ -70,3 +70,40 @@ def test_tcl_algorithm_does_not_invent_waters_when_outer_count_below_target(tmp_
     assert report['outer_water_count']==8
     assert report['selected_water_count_unique_resid']==8
     assert sum(a.resname=='TIP3' and a.name=='OH2' for a in atoms)==8
+
+
+def test_tcl_atom_api_matches_pdb_api():
+    from solvent_shell.selection import read_atoms, select_tcl_atoms
+    atoms_file, report_file = select_tcl_snapshot(FIXTURE, target_waters=2, solute_resnames=("CU1",), water_resnames=("HOH",))
+    atoms_memory, report_memory = select_tcl_atoms(read_atoms(FIXTURE), source_label="fixture", target_waters=2, solute_resnames=("CU1",), water_resnames=("HOH",))
+    assert [(a.name, a.resname, a.resid, a.x, a.y, a.z) for a in atoms_file] == [
+        (a.name, a.resname, a.resid, a.x, a.y, a.z) for a in atoms_memory
+    ]
+    assert report_file["selected_water_resids"] == report_memory["selected_water_resids"]
+
+
+def test_mult_pdb_cli_writes_one_output_per_input(tmp_path):
+    from solvent_shell.cli import _run_tcl_pdbs
+    first = tmp_path / "one.pdb"
+    second = tmp_path / "two.pdb"
+    _make_tcl_fixture(first, 50)
+    _make_tcl_fixture(second, 55)
+    outdir = tmp_path / "out"
+    _run_tcl_pdbs([str(first), str(second)], outdir, 50)
+    assert (outdir / "one_qm_frame.pdb").is_file()
+    assert (outdir / "two_qm_frame.pdb").is_file()
+    reports = __import__("json").loads((outdir / "selection_reports.json").read_text())
+    assert len(reports) == 2
+    assert [r["outer_water_count"] for r in reports] == [50, 55]
+
+
+def test_trajectory_adapter_preserves_atom_fields():
+    pytest.importorskip("MDAnalysis")
+    import MDAnalysis as mda
+    from solvent_shell.cli import _pdb_atom_from_mda
+    u = mda.Universe(str(FIXTURE))
+    atom = _pdb_atom_from_mda(u.atoms[0], 1)
+    assert atom.name == u.atoms[0].name
+    assert atom.resname == u.atoms[0].resname
+    assert atom.resid == str(u.atoms[0].resid)
+    assert abs(atom.x - float(u.atoms[0].position[0])) < 1e-3

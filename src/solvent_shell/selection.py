@@ -54,10 +54,10 @@ def write_atom_lines(atoms, path):
     for serial,a in enumerate(atoms,1): lines.append(f"{a.line[:6]}{serial:5d}{a.line[11:]}")
     Path(path).write_text("\n".join(lines)+("\n" if lines else "")+"END\n", encoding="utf-8")
 
-def select_tcl_snapshot(pdb_path, target_waters=50, solute_resnames=("CU1P","DTT","DTBD"),
-                        local_atom_names=("S1","S2","S3","S4","N2","O1","O2","CU1P"),
-                        water_resnames=("TIP3","HOH","WAT"), oxygen_name="OH2",
-                        outer_cutoff=10.0, local_cutoff=3.5):
+def select_tcl_atoms(atoms, source_label="<in-memory>", target_waters=50, solute_resnames=("CU1P","DTT","DTBD"),
+                     local_atom_names=("S1","S2","S3","S4","N2","O1","O2","CU1P"),
+                     water_resnames=("TIP3","HOH","WAT"), oxygen_name="OH2",
+                     outer_cutoff=10.0, local_cutoff=3.5):
     """Port the Tcl selection logic without changing its selection algorithm.
 
     Counts waters within outer_cutoff of any solute atom. If that count equals
@@ -68,7 +68,7 @@ def select_tcl_snapshot(pdb_path, target_waters=50, solute_resnames=("CU1P","DTT
     The original uses resid alone when writing the final selection; this port
     preserves that behavior.
     """
-    atoms=read_atoms(pdb_path); groups=group_residues(atoms)
+    groups=group_residues(atoms)
     solute=[a for a in atoms if a.resname in solute_resnames]
     if not solute: raise ValueError(f"No solute atoms found for resnames {solute_resnames}")
     water_names=set(water_resnames)
@@ -107,12 +107,16 @@ def select_tcl_snapshot(pdb_path, target_waters=50, solute_resnames=("CU1P","DTT
     # another chain/residue. This is intentional fidelity, not recommended redesign.
     output=[a for a in atoms if a.resname in solute_resnames or
             (a.resid in selected_resids)]
-    report={"input":str(pdb_path),"mode":mode,"outer_water_count":count,
+    report={"input":str(source_label),"mode":mode,"outer_water_count":count,
             "target_water_count":target_waters,"selected_water_resids":sorted(selected_resids, key=lambda x:(int(x) if x.lstrip('-').isdigit() else 10**12,x)),
             "selected_water_count_unique_resid":len(selected_resids),"solute_atom_count":len(solute),
             "local_atom_names":list(local_atom_names),"outer_cutoff_angstrom":outer_cutoff,
             "local_cutoff_angstrom":local_cutoff}
     return output, report
+
+def select_tcl_snapshot(pdb_path, **kwargs):
+    """Apply the Tcl-derived algorithm to the first model of a PDB file."""
+    return select_tcl_atoms(read_atoms(pdb_path), source_label=str(pdb_path), **kwargs)
 
 def select_waters(pdb_path, center_resname, center_atom, water_resnames=("TIP3","HOH","WAT"),
                   oxygen_names=("OH2","O","OW"), nearest=None, cutoff=None, center_chain=None, center_resid=None):
