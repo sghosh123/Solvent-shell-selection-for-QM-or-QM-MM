@@ -1,6 +1,6 @@
 # QM/MM solvent-shell selection
 
-This repository now preserves and ports the snapshot-based workflow in `source/qm_prep_mult_frame_exp_solv.tcl`. The reimplementation is intended to keep the original **selection algorithm unchanged**, not replace it with a generic nearest-water or Cu-centered cutoff rule.
+This repository preserves and ports the snapshot-based workflow in `source/qm_prep_mult_frame_exp_solv.tcl.
 
 ## Original Tcl workflow
 
@@ -66,4 +66,4 @@ This snapshot-preparation script is not the same as NAMD's live solvent-selectio
 
 ## Validation limits
 
-Regression tests use synthetic PDBs and check the algorithm's main branches. Real-structure parity against VMD remains unverified because the matching original snapshot PDBs were not supplied with the Tcl file. Inspect the JSON report and compare selected residue IDs against VMD before production use.
+Regression tests use synthetic PDBs and check the algorithm's main branches. Inspect the JSON report and compare selected residue IDs against VMD before production use.
