@@ -1,4 +1,4 @@
-# QM/MM solvent-shell selection
+# QM solvent-shell selection from MD
 
 This repository now preserves and ports the snapshot-based workflow in `source/qm_prep_mult_frame_exp_solv.tcl`. The reimplementation is intended to keep the original **selection algorithm unchanged**, not replace it with a generic nearest-water or Cu-centered cutoff rule.
 
