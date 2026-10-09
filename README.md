@@ -1,4 +1,4 @@
-# QM/MM solvent-shell selection
+# Solvent-shell selection
 
 This repository preserves and ports the snapshot-based workflow in `source/qm_prep_mult_frame_exp_solv.tcl.
 
